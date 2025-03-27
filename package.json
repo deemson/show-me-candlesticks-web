@@ -25,12 +25,18 @@
     "@tailwindcss/vite": "^4.0.15",
     "@types/node": "^22.13.11",
     "astro": "^5.5.4",
+    "fake-indexeddb": "^6.0.0",
     "prettier": "^3.5.3",
     "prettier-plugin-astro": "^0.14.1",
     "vitest": "^3.0.9"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.6.1",
+    "ccxt": "^4.4.70",
+    "date-fns": "^4.1.0",
+    "idb": "^8.0.2",
     "lightweight-charts": "^5.0.3",
+    "loglevel": "^1.9.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",
