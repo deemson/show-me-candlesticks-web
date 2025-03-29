@@ -1,9 +1,9 @@
 import type { Candlestick } from "@/code/core/data/candlestick.ts";
 import type { Interval } from "@/code/core/data/interval.ts";
-import type { Exchange } from '@/code/core/data/exchange.ts'
+import type { Exchange } from "@/code/core/data/exchange.ts";
 
 export interface Key {
-  exchange: Exchange
+  exchange: Exchange;
   symbol: [string, string];
   interval: Interval;
 }

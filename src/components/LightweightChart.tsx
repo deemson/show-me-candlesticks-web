@@ -2,12 +2,12 @@ import { useEffect, useRef, type RefObject } from "react";
 import { createChart, type IChartApi, type ISeriesApi, CandlestickSeries } from "lightweight-charts";
 
 interface Props {
-  data: any[]
-  width: number
-  height: number
+  data: any[];
+  width: number;
+  height: number;
 }
 
-export const LightweightChart = (props: Props = {data: [], width: 600, height: 300}) => {
+export const LightweightChart = (props: Props = { data: [], width: 600, height: 300 }) => {
   const chartContainerRef: RefObject<HTMLDivElement | null> = useRef(null);
   const chartRef: RefObject<IChartApi | null> = useRef(null);
   const seriesRef: RefObject<ISeriesApi<"Candlestick"> | null> = useRef(null);
