@@ -31,9 +31,12 @@
     "vitest": "^3.0.9"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@reduxjs/toolkit": "^2.6.1",
     "ccxt": "^4.4.70",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.6.2",
     "idb": "^8.0.2",
     "lightweight-charts": "^5.0.3",
     "loglevel": "^1.9.2",
