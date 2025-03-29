@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from "react";
-import { createChart, type IChartApi, type ISeriesApi, LineSeries } from "lightweight-charts";
+import { createChart, type IChartApi, type ISeriesApi, CandlestickSeries } from "lightweight-charts";
 
 interface Props {
   data: any[]
@@ -10,7 +10,7 @@ interface Props {
 export const LightweightChart = (props: Props = {data: [], width: 600, height: 300}) => {
   const chartContainerRef: RefObject<HTMLDivElement | null> = useRef(null);
   const chartRef: RefObject<IChartApi | null> = useRef(null);
-  const seriesRef: RefObject<ISeriesApi<"Line"> | null> = useRef(null);
+  const seriesRef: RefObject<ISeriesApi<"Candlestick"> | null> = useRef(null);
 
   useEffect(() => {
     // Create chart
@@ -31,7 +31,7 @@ export const LightweightChart = (props: Props = {data: [], width: 600, height: 3
 
     // Add series
     if (chartRef.current !== null) {
-      seriesRef.current = chartRef.current.addSeries(LineSeries);
+      seriesRef.current = chartRef.current.addSeries(CandlestickSeries);
     }
     if (seriesRef.current !== null) {
       seriesRef.current.setData(props.data);
@@ -40,7 +40,7 @@ export const LightweightChart = (props: Props = {data: [], width: 600, height: 3
     // Resize handling (optional)
     const handleResize = () => {
       if (chartContainerRef.current !== null && chartRef.current !== null) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+        // chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
     };
     window.addEventListener("resize", handleResize);

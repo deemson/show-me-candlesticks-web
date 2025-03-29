@@ -1,12 +1,13 @@
 ---
 import "@/styles/global.css";
 import { LightweightChart } from "@/components/LightweightChart";
+import rawData from "@/data/binance-2023-btc.json";
 const title = "Welcome to Astro!";
-const mockData = [
-  { time: "2024-03-18", value: 43.51 },
-  { time: "2024-03-19", value: 44.12 },
-  { time: "2024-03-20", value: 43.98 },
-];
+
+const data = rawData.map((v) => {
+  const [time, open, high, low, close, _] = v;
+  return { time, open, high, low, close };
+});
 ---
 
 <html>
@@ -17,7 +18,7 @@ const mockData = [
     <h1>{title}</h1>
     <p class="text-amber-500">This is an Astro project initialized manually.</p>
     <div>
-      <LightweightChart data={mockData} width={600} height={300} client:load />
+      <LightweightChart data={data} width={600} height={300} client:load />
     </div>
   </body>
 </html>
