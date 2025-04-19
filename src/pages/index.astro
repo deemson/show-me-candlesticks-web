@@ -1,24 +1,13 @@
 ---
 import "@/styles/global.css";
-import { LightweightChart } from "@/components/LightweightChart";
-import rawData from "@/data/binance-2023-btc.json";
-const title = "Welcome to Astro!";
-
-const data = rawData.map((v) => {
-  const [time, open, high, low, close, _] = v;
-  return { time, open, high, low, close };
-});
+import { App } from "@/islands/main-chart/App";
 ---
 
 <html>
   <head>
-    <title>{title}</title>
+    <title>Main Chart</title>
   </head>
   <body>
-    <h1>{title}</h1>
-    <p class="text-amber-500">This is an Astro project initialized manually.</p>
-    <div>
-      <LightweightChart data={data} width={600} height={300} client:load />
-    </div>
+    <App client:load />
   </body>
 </html>
