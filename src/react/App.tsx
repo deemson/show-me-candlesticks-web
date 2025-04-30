@@ -1,4 +1,4 @@
-import { Chart } from "@/Chart";
+import { Chart } from "@/react/Chart";
 
 export const App = () => {
   return <Chart />;
