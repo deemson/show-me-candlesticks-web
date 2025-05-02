@@ -36,6 +36,7 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "idb": "^8.0.2",
+    "immutable": "^5.1.1",
     "lightweight-charts": "^5.0.5",
     "loglevel": "^1.9.2",
     "react": "^19.1.0",
