@@ -1,140 +1,93 @@
-import {
-  differenceInSeconds as dateFnsDifferenceInSeconds,
-  differenceInMinutes as dateFnsDifferenceInMinutes,
-  differenceInHours as dateFnsDifferenceInHours,
-  differenceInDays as dateFnsDifferenceInDays,
-  differenceInWeeks as dateFnsDifferenceInWeeks,
-  differenceInMonths as dateFnsDifferenceInMonths,
-} from "date-fns";
+import * as dateFns from "date-fns";
 
-export const allIntervals = [
-  "1s",
-  "1m",
-  "3m",
-  "5m",
-  "15m",
-  "30m",
-  "1h",
-  "2h",
-  "4h",
-  "6h",
-  "8h",
-  "12h",
-  "1d",
-  "3d",
-  "15d",
-  "1w",
-  "1M",
-] as const;
-export type Interval = (typeof allIntervals)[number];
+export const allUnits = ["seconds", "minutes", "hours", "days", "weeks", "months"] as const;
+export type Unit = (typeof allUnits)[number];
 
-type DifferenceFunc = (earlierDate: Date, laterDate: Date) => number;
-
-interface Functions {
-  difference: DifferenceFunc;
+export interface Interval {
+  unit: Unit;
+  amount: number;
 }
 
-const differenceInSeconds = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInSeconds(laterDate, earlierDate);
+interface UnitOperations {
+  add: (date: Date, amount: number) => Date;
+  subtract: (date: Date, amount: number) => Date;
+  difference: (earlierDate: Date, laterDate: Date) => number;
+}
+
+const unitOperationsMap: Record<Unit, UnitOperations> = {
+  seconds: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addSeconds(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subSeconds(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInSeconds(laterDate, earlierDate);
+    },
+  },
+  minutes: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addMinutes(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subMinutes(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInMinutes(laterDate, earlierDate);
+    },
+  },
+  hours: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addHours(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subHours(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInHours(laterDate, earlierDate);
+    },
+  },
+  days: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addDays(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subDays(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInDays(laterDate, earlierDate);
+    },
+  },
+  weeks: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addWeeks(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subWeeks(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInWeeks(laterDate, earlierDate);
+    },
+  },
+  months: {
+    add: (date: Date, amount: number): Date => {
+      return dateFns.addMonths(date, amount);
+    },
+    subtract: (date: Date, amount: number): Date => {
+      return dateFns.subMonths(date, amount);
+    },
+    difference: (earlierDate: Date, laterDate: Date): number => {
+      return dateFns.differenceInMonths(laterDate, earlierDate);
+    },
+  },
 };
 
-const differenceInMinutes = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInMinutes(laterDate, earlierDate);
-};
-
-const makeDifferenceInNumberOfMinutes = (num: number): DifferenceFunc => {
-  return (earlierDate: Date, laterDate: Date): number => {
-    return Math.floor(differenceInMinutes(earlierDate, laterDate) / num);
-  };
-};
-
-const differenceInHours = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInHours(laterDate, earlierDate);
-};
-
-const makeDifferenceInNumberOfHours = (num: number): DifferenceFunc => {
-  return (earlierDate: Date, laterDate: Date): number => {
-    return Math.floor(differenceInHours(earlierDate, laterDate) / num);
-  };
-};
-
-const differenceInDays = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInDays(laterDate, earlierDate);
-};
-
-const makeDifferenceInNumberOfDays = (num: number): DifferenceFunc => {
-  return (earlierDate: Date, laterDate: Date): number => {
-    return Math.floor(differenceInDays(earlierDate, laterDate) / num);
-  };
-};
-
-const differenceInWeeks = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInWeeks(laterDate, earlierDate);
-};
-
-const differenceInMonths = (earlierDate: Date, laterDate: Date): number => {
-  return dateFnsDifferenceInMonths(laterDate, earlierDate);
-};
-
-const functionsMap: Record<Interval, Functions> = {
-  "1s": {
-    difference: differenceInSeconds,
-  },
-  "1m": {
-    difference: differenceInMinutes,
-  },
-  "3m": {
-    difference: makeDifferenceInNumberOfMinutes(3),
-  },
-  "5m": {
-    difference: makeDifferenceInNumberOfMinutes(5),
-  },
-  "15m": {
-    difference: makeDifferenceInNumberOfMinutes(15),
-  },
-  "30m": {
-    difference: makeDifferenceInNumberOfMinutes(30),
-  },
-  "1h": {
-    difference: differenceInHours,
-  },
-  "2h": {
-    difference: makeDifferenceInNumberOfHours(2),
-  },
-  "4h": {
-    difference: makeDifferenceInNumberOfHours(4),
-  },
-  "6h": {
-    difference: makeDifferenceInNumberOfHours(6),
-  },
-  "8h": {
-    difference: makeDifferenceInNumberOfHours(8),
-  },
-  "12h": {
-    difference: makeDifferenceInNumberOfHours(12),
-  },
-  "1d": {
-    difference: differenceInDays,
-  },
-  "3d": {
-    difference: makeDifferenceInNumberOfDays(3),
-  },
-  "1w": {
-    difference: differenceInWeeks,
-  },
-  "15d": {
-    difference: makeDifferenceInNumberOfDays(15),
-  },
-  "1M": {
-    difference: differenceInMonths,
-  },
+export const difference = (interval: Interval, earlierDate: Date, laterDate: Date): number => {
+  return Math.floor(unitOperationsMap[interval.unit].difference(earlierDate, laterDate) / interval.amount);
 };
 
 const epochDate = new Date(Date.UTC(1970, 0));
-
-export const difference = (interval: Interval, earlierDate: Date, laterDate: Date): number => {
-  return functionsMap[interval].difference(earlierDate, laterDate);
-};
 
 export const numberSinceEpoch = (interval: Interval, date: Date): number => {
   return difference(interval, epochDate, date);

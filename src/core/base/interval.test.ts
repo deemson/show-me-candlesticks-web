@@ -16,11 +16,17 @@ describe("date demonstrative tests", () => {
     expect(differenceInMonths(addHours(date, 3), epochDate)).toEqual(27);
     expect(addMonths(epochDate, 28).toISOString()).toEqual("1972-05-01T00:00:00.000Z");
   });
+  test("float number date calculation", () => {
+    const date = new Date(Date.UTC(1970, 0));
+    expect(addHours(date, 1.5).toISOString()).toEqual("1970-01-01T01:30:00.000Z");
+    expect(addMonths(date, 0.5).toISOString()).toEqual("1970-01-01T00:00:00.000Z");
+    expect(addMonths(date, 2.5).toISOString()).toEqual("1970-03-01T00:00:00.000Z");
+  });
 });
 
 describe("interval", () => {
   test("numberSinceEpoch", () => {
-    expect(numberSinceEpoch("1m", new Date(Date.UTC(1970, 0, 1, 0, 7)))).toEqual(7);
-    expect(numberSinceEpoch("5m", new Date(Date.UTC(1970, 0, 1, 0, 12)))).toEqual(2);
+    expect(numberSinceEpoch({ amount: 1, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 7)))).toEqual(7);
+    expect(numberSinceEpoch({ amount: 5, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 12)))).toEqual(2);
   });
 });
