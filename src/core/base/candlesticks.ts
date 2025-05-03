@@ -1,5 +1,3 @@
-import type { Interval } from "@/core/base/interval";
-
 export interface Candlestick {
   timestamp: number;
   open: number;
@@ -19,14 +17,14 @@ export interface FetchBackwardResult {
   atTimestamp: Candlestick | null;
 }
 
-export interface FetchCenteredResult {
+export interface FetchAroundResult {
   beforeTimestamp: Candlestick[];
   atTimestamp: Candlestick | null;
   afterTimestamp: Candlestick[];
 }
 
 export interface Fetcher {
-  fetchCentered(interval: Interval, timestamp: number): Promise<FetchCenteredResult>;
-  fetchForward(interval: Interval, timestamp: number): Promise<FetchForwardResult>;
-  fetchBackward(interval: Interval, timestamp: number): Promise<FetchBackwardResult>;
+  fetchAround(timestamp: number): Promise<FetchAroundResult>;
+  fetchForward(timestamp: number): Promise<FetchForwardResult>;
+  fetchBackward(timestamp: number): Promise<FetchBackwardResult>;
 }
