@@ -83,11 +83,23 @@ const unitOperationsMap: Record<Unit, UnitOperations> = {
   },
 };
 
+export const add = (interval: Interval, date: Date, amount: number): Date => {
+  return unitOperationsMap[interval.unit].add(date, interval.amount * amount);
+};
+
+export const subtract = (interval: Interval, date: Date, amount: number): Date => {
+  return unitOperationsMap[interval.unit].subtract(date, interval.amount * amount);
+};
+
 export const difference = (interval: Interval, earlierDate: Date, laterDate: Date): number => {
   return Math.floor(unitOperationsMap[interval.unit].difference(earlierDate, laterDate) / interval.amount);
 };
 
 const epochDate = new Date(Date.UTC(1970, 0));
+
+export const addToEpoch = (interval: Interval, amount: number): Date => {
+  return add(interval, epochDate, amount);
+};
 
 export const numberSinceEpoch = (interval: Interval, date: Date): number => {
   return difference(interval, epochDate, date);

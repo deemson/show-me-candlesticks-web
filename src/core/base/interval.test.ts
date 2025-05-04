@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { differenceInMonths, addHours, addMonths } from "date-fns";
-import { numberSinceEpoch } from "@/core/base/interval";
+import { addToEpoch, numberSinceEpoch } from "@/core/base/interval";
 
 describe("date demonstrative tests", () => {
   test("start of the epoch and a slight shift", () => {
@@ -25,6 +25,9 @@ describe("date demonstrative tests", () => {
 });
 
 describe("interval", () => {
+  test("addToEpoch", () => {
+    expect(addToEpoch({ amount: 3, unit: "minutes" }, 3).toISOString()).toEqual("1970-01-01T00:09:00.000Z");
+  });
   test("numberSinceEpoch", () => {
     expect(numberSinceEpoch({ amount: 1, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 7)))).toEqual(7);
     expect(numberSinceEpoch({ amount: 5, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 12)))).toEqual(2);
