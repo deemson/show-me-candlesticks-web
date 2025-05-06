@@ -22,20 +22,18 @@ test("Fetcher", async () => {
   };
 
   const fetchAroundResult = await fetcher.fetchAround(date.getTime());
-  expect(fetchAroundResult.beforeTimestamp.map(dumpCandlestick)).toEqual([
+  expect(fetchAroundResult.map(dumpCandlestick)).toEqual([
     "14:O=40:C=30:L=25:H=50:V=120",
     "15:O=30:C=40:L=35:H=45:V=100",
-  ]);
-  expect(dumpCandlestick(fetchAroundResult.atTimestamp)).toEqual("16:O=40:C=35:L=30:H=50:V=80");
-  expect(fetchAroundResult.afterTimestamp.map(dumpCandlestick)).toEqual([
+    "16:O=40:C=35:L=30:H=50:V=80",
     "17:O=35:C=50:L=30:H=55:V=120",
     "18:O=50:C=20:L=10:H=60:V=100",
     "19:O=20:C=40:L=15:H=45:V=80",
   ]);
 
   const fetchForwardResult = await fetcher.fetchForward(date.getTime());
-  expect(dumpCandlestick(fetchForwardResult.atTimestamp)).toEqual("16:O=40:C=35:L=30:H=50:V=80");
-  expect(fetchForwardResult.afterTimestamp.map(dumpCandlestick)).toEqual([
+  expect(fetchForwardResult.map(dumpCandlestick)).toEqual([
+    "16:O=40:C=35:L=30:H=50:V=80",
     "17:O=35:C=50:L=30:H=55:V=120",
     "18:O=50:C=20:L=10:H=60:V=100",
     "19:O=20:C=40:L=15:H=45:V=80",
@@ -44,12 +42,12 @@ test("Fetcher", async () => {
   ]);
 
   const fetchBackwardResult = await fetcher.fetchBackward(date.getTime());
-  expect(fetchBackwardResult.beforeTimestamp.map(dumpCandlestick)).toEqual([
+  expect(fetchBackwardResult.map(dumpCandlestick)).toEqual([
     "11:O=35:C=50:L=30:H=55:V=120",
     "12:O=50:C=20:L=10:H=60:V=100",
     "13:O=20:C=40:L=15:H=45:V=80",
     "14:O=40:C=30:L=25:H=50:V=120",
     "15:O=30:C=40:L=35:H=45:V=100",
+    "16:O=40:C=35:L=30:H=50:V=80",
   ]);
-  expect(dumpCandlestick(fetchBackwardResult.atTimestamp)).toEqual("16:O=40:C=35:L=30:H=50:V=80");
 });

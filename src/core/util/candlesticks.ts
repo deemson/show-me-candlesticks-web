@@ -1,14 +1,6 @@
-import type {
-  Candlestick,
-  Fetcher as IFetcher,
-  FetchAroundResult,
-  FetchBackwardResult,
-  FetchForwardResult,
-} from "@/core/base/candlesticks";
+import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { Interval } from "@/core/base/interval";
 import * as intervalLib from "@/core/base/interval";
-
-const dataFetchRequestLimit = 5;
 
 export class CachingFetcher implements IFetcher {
   private readonly aroundForwardLimit: number;
@@ -19,7 +11,7 @@ export class CachingFetcher implements IFetcher {
   constructor(
     private readonly interval: Interval,
     limit: number,
-    private readonly store: CacheStore,
+    private readonly cacheStore: CacheStore,
     private readonly dataFetcher: IFetcher,
   ) {
     this.aroundForwardLimit = Math.round((limit - 1) / 2);
@@ -28,91 +20,91 @@ export class CachingFetcher implements IFetcher {
     this.backwardLimit = Math.floor(limit - 1);
   }
 
-  async fetchAround(timestamp: number): Promise<FetchAroundResult> {
+  async fetchAround(timestamp: number): Promise<Candlestick[]> {
     const date = new Date(timestamp);
     const fromDate = intervalLib.subtract(this.interval, date, this.aroundBackwardLimit);
     const toDate = intervalLib.add(this.interval, date, this.aroundForwardLimit);
-    const candlesticks = await this.fetchDateRange(fromDate, toDate);
-    const fetchBackwardResult = this.extractFetchBackwardResult(timestamp, candlesticks);
-    const fetchForwardResult = this.extractFetchForwardResult(timestamp, candlesticks);
-    let atTimestamp: Candlestick | null = null;
-    if (fetchBackwardResult.atTimestamp !== null) {
-      atTimestamp = fetchBackwardResult.atTimestamp;
-    } else if (fetchForwardResult.atTimestamp !== null) {
-      atTimestamp = fetchForwardResult.atTimestamp;
-    }
-    return {
-      beforeTimestamp: fetchBackwardResult.beforeTimestamp,
-      atTimestamp,
-      afterTimestamp: fetchForwardResult.afterTimestamp,
-    };
+    return this.fetchDateRange(fromDate, toDate);
   }
 
-  async fetchForward(timestamp: number): Promise<FetchForwardResult> {
+  async fetchForward(timestamp: number): Promise<Candlestick[]> {
     const fromDate = new Date(timestamp);
     const toDate = intervalLib.add(this.interval, fromDate, this.forwardLimit);
-    const candlesticks = await this.fetchDateRange(fromDate, toDate);
-    return this.extractFetchForwardResult(timestamp, candlesticks);
+    return this.fetchDateRange(fromDate, toDate);
   }
 
-  async fetchBackward(timestamp: number): Promise<FetchBackwardResult> {
+  async fetchBackward(timestamp: number): Promise<Candlestick[]> {
     const toDate = new Date(timestamp);
     const fromDate = intervalLib.subtract(this.interval, toDate, this.backwardLimit);
-    const candlesticks = await this.fetchDateRange(fromDate, toDate);
-    return this.extractFetchBackwardResult(timestamp, candlesticks);
+    return this.fetchDateRange(fromDate, toDate);
   }
 
   private async fetchDateRange(fromDate: Date, toDate: Date): Promise<Candlestick[]> {
-    const candlestickBlocks = await this.store.load(fromDate.getTime(), toDate.getTime());
-    if (candlestickBlocks.length === 0) {
-      return [];
+    const candlestickBlocks = await this.cacheStore.load(fromDate.getTime(), toDate.getTime());
+    if (!candlestickBlocks || candlestickBlocks.length === 0) {
+      const candlesticksRange = await this.dataFetchMissingRange(fromDate, toDate);
+      if (!candlesticksRange || candlesticksRange.length === 0) {
+        throw Error("empty data range");
+      }
+      return candlesticksRange;
     }
-    return [];
+    switch (candlestickBlocks.length) {
+      case 1:
+        const candlesticksFromBlock = candlestickBlocks[0];
+        const isMissingHead = candlesticksFromBlock[0].timestamp > fromDate.getTime();
+        const isMissingTail = candlesticksFromBlock[candlesticksFromBlock.length - 1].timestamp < toDate.getTime();
+        if (isMissingHead && isMissingTail) {
+          throw Error("candlestick block missing both head & tail");
+        }
+        if (isMissingHead) {
+          const haveDate = new Date(candlesticksFromBlock[0].timestamp);
+          const headDate = intervalLib.subtract(this.interval, haveDate, 1);
+          const candlesticksHead = await this.dataFetchMissingHead(headDate);
+          return [...candlesticksHead, ...candlesticksFromBlock];
+        }
+        if (isMissingTail) {
+          const haveDate = new Date(candlesticksFromBlock[candlesticksFromBlock.length - 1].timestamp);
+          const tailDate = intervalLib.add(this.interval, haveDate, 1);
+          const candlesticksTail = await this.dataFetchMissingTail(tailDate);
+          return [...candlesticksFromBlock, ...candlesticksTail];
+        }
+        return candlesticksFromBlock;
+      case 2:
+        const [candlesticksHead, candlesticksTail] = candlestickBlocks;
+        if (candlesticksHead[0].timestamp > fromDate.getTime()) {
+          throw Error("2 candlestick blocks missing head");
+        }
+        if (candlesticksTail[candlesticksTail.length - 1].timestamp < toDate.getTime()) {
+          throw Error("2 candlestick blocks missing tail");
+        }
+        const missingFromDate = intervalLib.add(this.interval, fromDate, 1);
+        const missingToDate = intervalLib.subtract(this.interval, toDate, 1);
+        const candlesticksInBetween = await this.dataFetchMissingRange(missingFromDate, missingToDate);
+        return [...candlesticksHead, ...candlesticksInBetween, ...candlesticksTail];
+      default:
+        throw Error("more than 2 candlestick blocks");
+    }
   }
 
-  private async dataFetchMissingRange(fromDate: Date, toDate: Date, requestLimit: number): Promise<Candlestick[]> {
-    return [];
+  private async dataFetchMissingRange(fromDate: Date, toDate: Date): Promise<Candlestick[]> {
+    const middleDate = new Date((fromDate.getTime() + toDate.getTime()) / 2);
+    const candlesticks = await this.dataFetcher.fetchAround(middleDate.getTime());
+    if (candlesticks && candlesticks.length > 0) {
+      await this.cacheStore.save(candlesticks);
+    }
+    return candlesticks;
   }
 
-  private async dataFetchMissingHead(wantDate: Date, haveDate: Date, requestLimit: number): Promise<Candlestick[]> {
-    let earliestDate = haveDate;
-    let candlesticks: Candlestick[] = [];
-    for (let i = 0; i < requestLimit; i++) {
-      let candlestickBatch: Candlestick[] = [];
-      const timestamp = intervalLib.subtract(this.interval, earliestDate, 1).getTime();
-      const fetchBackwardResult = await this.dataFetcher.fetchBackward(timestamp);
-    }
+  private async dataFetchMissingHead(date: Date): Promise<Candlestick[]> {
+    const candlesticks = await this.dataFetcher.fetchBackward(date.getTime());
+    await this.cacheStore.save(candlesticks);
+    return candlesticks;
   }
 
-  private extractFetchForwardResult(timestamp: number, candlesticks: Candlestick[]): FetchForwardResult {
-    let atTimestamp: Candlestick | null = null;
-    let afterTimestamp: Candlestick[] = [];
-    for (let i = 0; i < candlesticks.length; i++) {
-      if (candlesticks[i].timestamp === timestamp) {
-        atTimestamp = candlesticks[i];
-        continue;
-      }
-      if (candlesticks[i].timestamp > timestamp) {
-        afterTimestamp = candlesticks.toSpliced(i);
-      }
-    }
-    return { atTimestamp, afterTimestamp };
-  }
-
-  private extractFetchBackwardResult(timestamp: number, candlesticks: Candlestick[]): FetchBackwardResult {
-    let atTimestamp: Candlestick | null = null;
-    let beforeTimestamp: Candlestick[] = [];
-    for (let i = candlesticks.length - 1; i >= 0; i++) {
-      if (candlesticks[i].timestamp === timestamp) {
-        atTimestamp = candlesticks[i];
-        continue;
-      }
-      if (candlesticks[i].timestamp < timestamp) {
-        beforeTimestamp = candlesticks.toSpliced(0, i + 1);
-        break;
-      }
-    }
-    return { beforeTimestamp, atTimestamp };
+  private async dataFetchMissingTail(date: Date): Promise<Candlestick[]> {
+    const candlesticks = await this.dataFetcher.fetchForward(date.getTime());
+    await this.cacheStore.save(candlesticks);
+    return candlesticks;
   }
 }
 

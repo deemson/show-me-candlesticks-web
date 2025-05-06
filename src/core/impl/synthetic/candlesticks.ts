@@ -5,13 +5,7 @@ import {
   addToEpoch as addIntervalToEpoch,
   numberSinceEpoch as intervalNumberSinceEpoch,
 } from "@/core/base/interval";
-import type {
-  Candlestick,
-  Fetcher as IFetcher,
-  FetchAroundResult,
-  FetchBackwardResult,
-  FetchForwardResult,
-} from "@/core/base/candlesticks";
+import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 
 const possibleValues: { o: number; c: number; l: number; h: number }[] = [
   { o: 20, c: 40, l: 15, h: 45 },
@@ -53,37 +47,33 @@ export class Fetcher implements IFetcher {
     this.backwardBatchSize = Math.floor(batchSize - 1);
   }
 
-  async fetchAround(timestamp: number): Promise<FetchAroundResult> {
+  async fetchAround(timestamp: number): Promise<Candlestick[]> {
     const date = new Date(timestamp);
-    const atTimestamp = makeCandlestick(this.interval, date);
-    const afterTimestamp: Candlestick[] = [];
-    for (let i = 1; i <= this.aroundForwardBatchSize; i++) {
-      afterTimestamp.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
-    }
-    const beforeTimestamp: Candlestick[] = [];
+    const candlesticks: Candlestick[] = [];
     for (let i = this.aroundBackwardBatchSize; i >= 1; i--) {
-      beforeTimestamp.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
+      candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
     }
-    return { afterTimestamp, atTimestamp, beforeTimestamp };
+    for (let i = 0; i <= this.aroundForwardBatchSize; i++) {
+      candlesticks.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
+    }
+    return candlesticks;
   }
 
-  async fetchForward(timestamp: number): Promise<FetchForwardResult> {
+  async fetchForward(timestamp: number): Promise<Candlestick[]> {
     const date = new Date(timestamp);
-    const atTimestamp = makeCandlestick(this.interval, date);
-    const afterTimestamp: Candlestick[] = [];
-    for (let i = 1; i <= this.forwardBatchSize; i++) {
-      afterTimestamp.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
+    const candlesticks: Candlestick[] = [];
+    for (let i = 0; i <= this.forwardBatchSize; i++) {
+      candlesticks.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
     }
-    return { atTimestamp, afterTimestamp };
+    return candlesticks;
   }
 
-  async fetchBackward(timestamp: number): Promise<FetchBackwardResult> {
+  async fetchBackward(timestamp: number): Promise<Candlestick[]> {
     const date = new Date(timestamp);
-    const atTimestamp = makeCandlestick(this.interval, date);
-    const beforeTimestamp: Candlestick[] = [];
-    for (let i = this.backwardBatchSize; i >= 1; i--) {
-      beforeTimestamp.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
+    const candlesticks: Candlestick[] = [];
+    for (let i = this.backwardBatchSize; i >= 0; i--) {
+      candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
     }
-    return { atTimestamp, beforeTimestamp };
+    return candlesticks;
   }
 }
