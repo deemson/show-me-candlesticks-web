@@ -29,6 +29,7 @@ describe("interval", () => {
     expect(addToEpoch({ amount: 3, unit: "minutes" }, 3).toISOString()).toEqual("1970-01-01T00:09:00.000Z");
   });
   test("numberSinceEpoch", () => {
+    expect(numberSinceEpoch({ amount: 1, unit: "days" }, new Date(Date.UTC(1970, 0)))).toEqual(0);
     expect(numberSinceEpoch({ amount: 1, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 7)))).toEqual(7);
     expect(numberSinceEpoch({ amount: 5, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 12)))).toEqual(2);
   });
