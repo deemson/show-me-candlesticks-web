@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
-import { differenceInMonths, addHours, addMonths } from "date-fns";
+import { differenceInMonths, addHours, addMonths, addDays } from "date-fns";
 import { addToEpoch, numberSinceEpoch } from "@/core/base/interval";
+import { UTCDate } from "@date-fns/utc";
 
 describe("date demonstrative tests", () => {
   test("start of the epoch and a slight shift", () => {
@@ -22,6 +23,14 @@ describe("date demonstrative tests", () => {
     expect(addMonths(date, 0.5).toISOString()).toEqual("1970-01-01T00:00:00.000Z");
     expect(addMonths(date, 2.5).toISOString()).toEqual("1970-03-01T00:00:00.000Z");
   });
+  test("day saving", () => {
+    const date = new Date(Date.UTC(2025, 2, 29));
+    expect(date.toISOString()).toEqual("2025-03-29T00:00:00.000Z")
+    expect(addDays(date, 2).toISOString()).toEqual("2025-03-30T23:00:00.000Z")
+    const utcDate = new UTCDate(2025, 2, 29);
+    expect(utcDate.toISOString()).toEqual("2025-03-29T00:00:00.000Z")
+    expect(addDays(utcDate, 2).toISOString()).toEqual("2025-03-31T00:00:00.000Z")
+  });
 });
 
 describe("interval", () => {
@@ -29,8 +38,8 @@ describe("interval", () => {
     expect(addToEpoch({ amount: 3, unit: "minutes" }, 3).toISOString()).toEqual("1970-01-01T00:09:00.000Z");
   });
   test("numberSinceEpoch", () => {
-    expect(numberSinceEpoch({ amount: 1, unit: "days" }, new Date(Date.UTC(1970, 0)))).toEqual(0);
-    expect(numberSinceEpoch({ amount: 1, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 7)))).toEqual(7);
-    expect(numberSinceEpoch({ amount: 5, unit: "minutes" }, new Date(Date.UTC(1970, 0, 1, 0, 12)))).toEqual(2);
+    expect(numberSinceEpoch({ amount: 1, unit: "days" }, new UTCDate(1970, 0))).toEqual(0);
+    expect(numberSinceEpoch({ amount: 1, unit: "minutes" }, new UTCDate(1970, 0, 1, 0, 7))).toEqual(7);
+    expect(numberSinceEpoch({ amount: 5, unit: "minutes" }, new UTCDate(1970, 0, 1, 0, 12))).toEqual(2);
   });
 });

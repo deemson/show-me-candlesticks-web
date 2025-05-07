@@ -7,23 +7,17 @@ import {
   type CandlestickData,
   type UTCTimestamp,
 } from "lightweight-charts";
-import data2023 from "@/data/binance-2023-btc.json";
-import data2024 from "@/data/binance-2024-btc.json";
-import { fromUnixTime } from "date-fns";
+import type { Candlestick } from "@/core/base/candlesticks";
+import { Fetcher as SyntheticCandlestickFetcher } from "@/core/impl/synthetic/candlesticks";
+import { Fetcher as LoggingFetcher } from "@/core/impl/pino/candlesticks";
 
-const data = data2023.slice(0, data2023.length - 1).concat(data2024);
+const candlestickToData = (candlestick: Candlestick): CandlestickData => {
+  const time = (candlestick.timestamp / 1000) as UTCTimestamp;
+  const { open, high, low, close } = candlestick;
+  return { time, open, high, low, close };
+};
 
-const candlestickData: CandlestickData[] = data.map((v) => {
-  const [millis, open, high, low, close, _] = v;
-  const time = (millis / 1000) as UTCTimestamp;
-  return {
-    time,
-    open,
-    high,
-    low,
-    close,
-  };
-});
+const dataFetcher = new LoggingFetcher("synthetic", new SyntheticCandlestickFetcher(101, { amount: 1, unit: "days" }));
 
 export const Chart = () => {
   const containerRef: RefObject<HTMLDivElement | null> = useRef(null);
@@ -35,19 +29,12 @@ export const Chart = () => {
       return;
     }
     chart = createChart(containerRef.current);
-    const timeScale = chart.timeScale();
-    timeScale.subscribeVisibleTimeRangeChange((dateRange: any) => {
-      const { from, to } = dateRange;
-      const fromDate = fromUnixTime(from);
-      const toDate = fromUnixTime(to);
-      console.log(fromDate.toISOString(), toDate.toISOString());
-    });
-    timeScale.subscribeVisibleLogicalRangeChange((dateRange: any) => {
-      const { from, to } = dateRange;
-      // console.log(`${from}:${to}=${to - from}`);
-    });
     series = chart.addSeries(CandlestickSeries);
-    series.setData(candlestickData);
+
+    (async () => {
+      const candlesticks = await dataFetcher.fetchBackward(new Date().getTime());
+      series.setData(candlesticks.map(candlestickToData));
+    })();
   }, []);
 
   return <div ref={containerRef} style={{ height: 500 }} />;

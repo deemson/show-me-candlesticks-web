@@ -6,6 +6,7 @@ import {
   numberSinceEpoch as intervalNumberSinceEpoch,
 } from "@/core/base/interval";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
+import { UTCDate } from "@date-fns/utc";
 
 const possibleValues: { o: number; c: number; l: number; h: number }[] = [
   { o: 20, c: 40, l: 15, h: 45 },
@@ -17,7 +18,7 @@ const possibleValues: { o: number; c: number; l: number; h: number }[] = [
 ];
 const possibleVolumes: number[] = [80, 120, 100];
 
-const makeCandlestick = (interval: Interval, date: Date): Candlestick => {
+const makeCandlestick = (interval: Interval, date: UTCDate): Candlestick => {
   const n = intervalNumberSinceEpoch(interval, date);
   const { o, c, l, h } = possibleValues[n % possibleValues.length];
   const volume = possibleVolumes[n % possibleVolumes.length];
@@ -48,7 +49,7 @@ export class Fetcher implements IFetcher {
   }
 
   async fetchAround(timestamp: number): Promise<Candlestick[]> {
-    const date = new Date(timestamp);
+    const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = this.aroundBackwardBatchSize; i >= 1; i--) {
       candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
@@ -60,7 +61,7 @@ export class Fetcher implements IFetcher {
   }
 
   async fetchForward(timestamp: number): Promise<Candlestick[]> {
-    const date = new Date(timestamp);
+    const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = 0; i <= this.forwardBatchSize; i++) {
       candlesticks.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
@@ -69,7 +70,7 @@ export class Fetcher implements IFetcher {
   }
 
   async fetchBackward(timestamp: number): Promise<Candlestick[]> {
-    const date = new Date(timestamp);
+    const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = this.backwardBatchSize; i >= 0; i--) {
       candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
