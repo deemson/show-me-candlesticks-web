@@ -4,10 +4,11 @@ import * as intervalLib from "@/core/base/interval";
 import { CachingFetcher } from "@/core/util/candlesticks";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { CacheStore } from "@/core/util/candlesticks";
+import type { UTCDate } from "@date-fns/utc";
 
 describe("CachingFetcher", async () => {
   const interval: Interval = { amount: 1, unit: "days" };
-  const d = (day: number): Date => {
+  const d = (day: number): UTCDate => {
     return intervalLib.addToEpoch(interval, day - 1);
   };
   const t = (day: number): number => {
@@ -109,6 +110,22 @@ describe("CachingFetcher", async () => {
       "1970-01-09T00:00:00.000Z",
     ]);
   });
+  test("no data in cache -> data fetch missing range and extra stuff is sliced off", async () => {
+    cacheStore.load.mockResolvedValue([]);
+    dataFetcher.fetchAround.mockResolvedValue([3, 4, 5, 6, 7, 8, 9, 10, 11].map(c));
+    cacheStore.save.mockResolvedValue();
+    const candlesticks = await fetcher.fetchAround(t(7));
+    expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+    expect(dataFetcher.fetchAround).toHaveBeenCalledExactlyOnceWith(t(7));
+    expect(cacheStore.save).toHaveBeenCalledExactlyOnceWith([3, 4, 5, 6, 7, 8, 9, 10, 11].map(c));
+    expect(candlesticks.map(dumpCandlestick)).toEqual([
+      "1970-01-05T00:00:00.000Z",
+      "1970-01-06T00:00:00.000Z",
+      "1970-01-07T00:00:00.000Z",
+      "1970-01-08T00:00:00.000Z",
+      "1970-01-09T00:00:00.000Z",
+    ]);
+  });
   test("cache contains the entire block", async () => {
     cacheStore.load.mockResolvedValue([[5, 6, 7, 8, 9].map(c)]);
     const candlesticks = await fetcher.fetchAround(t(7));
@@ -178,32 +195,37 @@ describe("CachingFetcher", async () => {
     expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
     expect(dataFetcher.fetchAround).toHaveBeenCalledExactlyOnceWith(t(7));
   });
+  const makeMessage = (p: { n: number; isNoHead: boolean; isNoTail: boolean }): string => {
+    const pref = "more than 1 gap in cache results";
+    const info = [`N=${p.n}`, `isMissingHead=${p.isNoHead}`, `isMissingTail=${p.isNoTail}`].join(" ");
+    return `${pref} (${info})`;
+  };
   test("cached block that's missing both head & tail -> error", async () => {
     cacheStore.load.mockResolvedValue([[c(6)]]);
     await expect(async () => {
       await fetcher.fetchAround(t(7));
-    }).rejects.toThrow("candlestick block missing both head & tail");
+    }).rejects.toThrow(makeMessage({ n: 1, isNoHead: true, isNoTail: true }));
     expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
   });
   test("2 cached blocks missing head -> error", async () => {
     cacheStore.load.mockResolvedValue([[c(6)], [c(9)]]);
     await expect(async () => {
       await fetcher.fetchAround(t(7));
-    }).rejects.toThrow("2 candlestick blocks missing head");
+    }).rejects.toThrow(makeMessage({ n: 2, isNoHead: true, isNoTail: false }));
     expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
   });
   test("2 cached blocks missing tail -> error", async () => {
     cacheStore.load.mockResolvedValue([[c(5)], [c(8)]]);
     await expect(async () => {
       await fetcher.fetchAround(t(7));
-    }).rejects.toThrow("2 candlestick blocks missing tail");
+    }).rejects.toThrow(makeMessage({ n: 2, isNoHead: false, isNoTail: true }));
     expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
   });
   test("more than 2 cached blocks -> error", async () => {
     cacheStore.load.mockResolvedValue([[c(5)], [c(7)], [c(9)]]);
     await expect(async () => {
       await fetcher.fetchAround(t(7));
-    }).rejects.toThrow("more than 2 candlestick blocks");
+    }).rejects.toThrow(makeMessage({ n: 3, isNoHead: false, isNoTail: false }));
     expect(cacheStore.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
   });
 });

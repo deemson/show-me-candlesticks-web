@@ -2,6 +2,7 @@ import type { Candlestick } from "@/core/base/candlesticks";
 import type { CacheStore as ICacheStore } from "@/core/util/candlesticks";
 import type { Interval } from "@/core/base/interval";
 import * as intervalLib from "@/core/base/interval";
+import { UTCDate } from "@date-fns/utc";
 
 export class FixedBlockSizeCacheStore implements ICacheStore {
   private readonly blockSize: number;
@@ -85,7 +86,7 @@ export class FixedBlockSizeCacheStore implements ICacheStore {
   }
 
   private timestampToBlockNumber(timestamp: number): number {
-    const n = intervalLib.numberSinceEpoch(this.interval, new Date(timestamp));
+    const n = intervalLib.numberSinceEpoch(this.interval, new UTCDate(timestamp));
     return Math.floor(n / this.blockSize);
   }
 }
