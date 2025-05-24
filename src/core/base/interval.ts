@@ -88,18 +88,26 @@ export const addToDate = (interval: Interval, date: UTCDate, amount: number): UT
   return unitOperationsMap[interval.unit].add(date, interval.amount * amount);
 };
 
-export const addToTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+export const addToTimestampToDate = (interval: Interval, timestamp: number, amount: number): UTCDate => {
   const date = new UTCDate(timestamp);
-  return addToDate(interval, date, amount).getTime();
+  return addToDate(interval, date, amount);
+};
+
+export const addToTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+  return addToTimestampToDate(interval, timestamp, amount).getTime();
 };
 
 export const subtractFromDate = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
   return unitOperationsMap[interval.unit].subtract(date, interval.amount * amount);
 };
 
-export const subtractFromTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+export const subtractFromTimestampToDate = (interval: Interval, timestamp: number, amount: number): UTCDate => {
   const date = new UTCDate(timestamp);
-  return subtractFromDate(interval, date, amount).getTime();
+  return subtractFromDate(interval, date, amount);
+};
+
+export const subtractFromTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+  return subtractFromTimestampToDate(interval, timestamp, amount).getTime();
 };
 
 export const differenceBetweenDates = (interval: Interval, earlierDate: UTCDate, laterDate: UTCDate): number => {
