@@ -84,24 +84,53 @@ const unitOperationsMap: Record<Unit, UnitOperations> = {
   },
 };
 
-export const add = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
+export const addToDate = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
   return unitOperationsMap[interval.unit].add(date, interval.amount * amount);
 };
 
-export const subtract = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
+export const addToTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+  const date = new UTCDate(timestamp);
+  return addToDate(interval, date, amount).getTime();
+};
+
+export const subtractFromDate = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
   return unitOperationsMap[interval.unit].subtract(date, interval.amount * amount);
 };
 
-export const difference = (interval: Interval, earlierDate: UTCDate, laterDate: UTCDate): number => {
+export const subtractFromTimestamp = (interval: Interval, timestamp: number, amount: number): number => {
+  const date = new UTCDate(timestamp);
+  return subtractFromDate(interval, date, amount).getTime();
+};
+
+export const differenceBetweenDates = (interval: Interval, earlierDate: UTCDate, laterDate: UTCDate): number => {
   return Math.floor(unitOperationsMap[interval.unit].difference(earlierDate, laterDate) / interval.amount);
+};
+
+export const differenceBetweenTimestamps = (
+  interval: Interval,
+  earlierTimestamp: number,
+  laterTimestamp: number,
+): number => {
+  const earlierDate = new UTCDate(earlierTimestamp);
+  const laterDate = new UTCDate(laterTimestamp);
+  return differenceBetweenDates(interval, earlierDate, laterDate);
 };
 
 const epochDate = new UTCDate(1970, 0);
 
-export const addToEpoch = (interval: Interval, amount: number): UTCDate => {
-  return add(interval, epochDate, amount);
+export const addToEpochDate = (interval: Interval, amount: number): UTCDate => {
+  return addToDate(interval, epochDate, amount);
 };
 
-export const numberSinceEpoch = (interval: Interval, date: UTCDate): number => {
-  return difference(interval, epochDate, date);
+export const addToEpochTimestamp = (interval: Interval, amount: number): number => {
+  return addToEpochDate(interval, amount).getTime();
+};
+
+export const numberSinceEpochDate = (interval: Interval, date: UTCDate): number => {
+  return differenceBetweenDates(interval, epochDate, date);
+};
+
+export const numberSinceEpochTimestamp = (interval: Interval, timestamp: number): number => {
+  const date = new UTCDate(timestamp);
+  return numberSinceEpochDate(interval, date);
 };
