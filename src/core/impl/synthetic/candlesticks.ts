@@ -1,9 +1,9 @@
 import type { Interval } from "@/core/base/interval";
 import {
-  add as addInterval,
-  subtract as subtractInterval,
-  addToEpoch as addIntervalToEpoch,
-  numberSinceEpoch as intervalNumberSinceEpoch,
+  addToDate,
+  subtractFromDate,
+  addToEpochDate,
+  numberSinceEpochDate
 } from "@/core/base/interval";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import { UTCDate } from "@date-fns/utc";
@@ -19,11 +19,11 @@ const possibleValues: { o: number; c: number; l: number; h: number }[] = [
 const possibleVolumes: number[] = [80, 120, 100];
 
 const makeCandlestick = (interval: Interval, date: UTCDate): Candlestick => {
-  const n = intervalNumberSinceEpoch(interval, date);
+  const n = numberSinceEpochDate(interval, date);
   const { o, c, l, h } = possibleValues[n % possibleValues.length];
   const volume = possibleVolumes[n % possibleVolumes.length];
   return {
-    timestamp: addIntervalToEpoch(interval, n).getTime(),
+    timestamp: addToEpochDate(interval, n).getTime(),
     open: o,
     high: h,
     low: l,
@@ -52,10 +52,10 @@ export class Fetcher implements IFetcher {
     const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = this.aroundBackwardBatchSize; i >= 1; i--) {
-      candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
+      candlesticks.push(makeCandlestick(this.interval, subtractFromDate(this.interval, date, i)));
     }
     for (let i = 0; i <= this.aroundForwardBatchSize; i++) {
-      candlesticks.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
+      candlesticks.push(makeCandlestick(this.interval, addToDate(this.interval, date, i)));
     }
     return candlesticks;
   }
@@ -64,7 +64,7 @@ export class Fetcher implements IFetcher {
     const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = 0; i <= this.forwardBatchSize; i++) {
-      candlesticks.push(makeCandlestick(this.interval, addInterval(this.interval, date, i)));
+      candlesticks.push(makeCandlestick(this.interval, addToDate(this.interval, date, i)));
     }
     return candlesticks;
   }
@@ -73,7 +73,7 @@ export class Fetcher implements IFetcher {
     const date = new UTCDate(timestamp);
     const candlesticks: Candlestick[] = [];
     for (let i = this.backwardBatchSize; i >= 0; i--) {
-      candlesticks.push(makeCandlestick(this.interval, subtractInterval(this.interval, date, i)));
+      candlesticks.push(makeCandlestick(this.interval, subtractFromDate(this.interval, date, i)));
     }
     return candlesticks;
   }

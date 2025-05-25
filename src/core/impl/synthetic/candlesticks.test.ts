@@ -1,11 +1,11 @@
 import { test, expect } from "vitest";
 import { Fetcher } from "@/core/impl/synthetic/candlesticks";
 import type { Candlestick } from "@/core/base/candlesticks";
-import * as interval from "@/core/base/interval";
+import { addToEpochDate } from "@/core/base/interval";
 
 test("Fetcher", async () => {
   const fetcher = new Fetcher(6, { amount: 1, unit: "days" });
-  const date = interval.addToEpoch({ amount: 1, unit: "days" }, 15);
+  const date = addToEpochDate({ amount: 1, unit: "days" }, 15);
 
   const dumpCandlestick = (candlestick: Candlestick | null): string => {
     if (candlestick === null) {
