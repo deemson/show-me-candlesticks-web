@@ -14,7 +14,7 @@ export class Fetcher implements IFetcher {
   constructor(
     private readonly interval: Interval,
     limit: number,
-    private readonly store: Store,
+    private readonly io: IO,
     private readonly dataFetcher: IFetcher,
   ) {
     this.aroundForwardLimit = Math.round((limit - 1) / 2);
@@ -45,7 +45,7 @@ export class Fetcher implements IFetcher {
   private async fetchDateRange(fetchType: FetchType, fromDate: UTCDate, toDate: UTCDate): Promise<Candlestick[]> {
     const fromTimestamp = fromDate.getTime();
     const toTimestamp = toDate.getTime();
-    const candlestickBlocks = await this.store.load(fromTimestamp, toTimestamp);
+    const candlestickBlocks = await this.io.load(fromTimestamp, toTimestamp);
     if (!candlestickBlocks || candlestickBlocks.length === 0) {
       let candlesticksRange: Candlestick[] = [];
       switch (fetchType) {
@@ -124,20 +124,20 @@ export class Fetcher implements IFetcher {
     const middleDate = new UTCDate((fromTimestamp + toTimestamp) / 2);
     const candlesticks = await this.dataFetcher.fetchAround(middleDate.getTime());
     if (candlesticks && candlesticks.length > 0) {
-      await this.store.save(candlesticks);
+      await this.io.save(candlesticks);
     }
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 
   private async dataFetchForward(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[]> {
     const candlesticks = await this.dataFetcher.fetchForward(fromTimestamp);
-    await this.store.save(candlesticks);
+    await this.io.save(candlesticks);
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 
   private async dataFetchBackward(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[]> {
     const candlesticks = await this.dataFetcher.fetchBackward(toTimestamp);
-    await this.store.save(candlesticks);
+    await this.io.save(candlesticks);
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 }
@@ -173,7 +173,7 @@ const sliceCandlesticksToDateRange = (
   return candlesticks.slice(iHead, iTail + 1);
 };
 
-export interface Store {
+export interface IO {
   load(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]>;
   save(candlesticks: Candlestick[]): Promise<void>;
 }

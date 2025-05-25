@@ -3,7 +3,7 @@ import type { Interval } from "@/core/base/interval";
 import { addToEpochDate } from "@/core/base/interval";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { UTCDate } from "@date-fns/utc";
-import type { Store } from "@/core/impl/cache/candlesticks/fetcher";
+import type { IO } from "@/core/impl/cache/candlesticks/fetcher";
 import { Fetcher } from "@/core/impl/cache/candlesticks/fetcher";
 
 describe("Fetcher", async () => {
@@ -21,13 +21,13 @@ describe("Fetcher", async () => {
     fetchBackward,
     fetchForward,
   };
-  const load: Mock<Store["load"]> = vi.fn(() => {
+  const load: Mock<IO["load"]> = vi.fn(() => {
     throw new Error("store.load unexpected call");
   });
-  const save: Mock<Store["save"]> = vi.fn(() => {
+  const save: Mock<IO["save"]> = vi.fn(() => {
     throw new Error("store.save unexpected call");
   });
-  const store = {
+  const io = {
     load,
     save,
   };
@@ -51,7 +51,7 @@ describe("Fetcher", async () => {
   const dumpCandlestick = (candlestick: Candlestick): string => {
     return new Date(candlestick.timestamp).toISOString();
   };
-  const fetcher = new Fetcher(interval, 5, store, dataFetcher);
+  const fetcher = new Fetcher(interval, 5, io, dataFetcher);
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -59,13 +59,13 @@ describe("Fetcher", async () => {
 
   describe("fetchAround", async () => {
     test("no data in cache", async () => {
-      store.load.mockResolvedValue([]);
+      io.load.mockResolvedValue([]);
       dataFetcher.fetchAround.mockResolvedValue([2, 3, 4, 5, 6, 7, 8].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchAround(t(5));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchAround).toHaveBeenCalledExactlyOnceWith(t(5));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7, 8].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7, 8].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -75,13 +75,13 @@ describe("Fetcher", async () => {
       ]);
     });
     test("missing range", async () => {
-      store.load.mockResolvedValue([[c(3)], [c(7)]]);
+      io.load.mockResolvedValue([[c(3)], [c(7)]]);
       dataFetcher.fetchAround.mockResolvedValue([2, 3, 4, 5, 6, 7, 8].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchAround(t(5));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchAround).toHaveBeenCalledExactlyOnceWith(t(5));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7, 8].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7, 8].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -94,13 +94,13 @@ describe("Fetcher", async () => {
 
   describe("fetchForward", async () => {
     test("no data in cache", async () => {
-      store.load.mockResolvedValue([]);
+      io.load.mockResolvedValue([]);
       dataFetcher.fetchForward.mockResolvedValue([2, 3, 4, 5, 6, 7].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchForward(t(2));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(2), t(6));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(2), t(6));
       expect(dataFetcher.fetchForward).toHaveBeenCalledExactlyOnceWith(t(2));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-02T00:00:00.000Z",
         "1970-01-03T00:00:00.000Z",
@@ -110,13 +110,13 @@ describe("Fetcher", async () => {
       ]);
     });
     test("missing range", async () => {
-      store.load.mockResolvedValue([[c(2)], [c(6)]]);
+      io.load.mockResolvedValue([[c(2)], [c(6)]]);
       dataFetcher.fetchForward.mockResolvedValue([3, 4, 5, 6, 7].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchForward(t(2));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(2), t(6));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(2), t(6));
       expect(dataFetcher.fetchForward).toHaveBeenCalledExactlyOnceWith(t(3));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([3, 4, 5, 6, 7].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([3, 4, 5, 6, 7].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-02T00:00:00.000Z",
         "1970-01-03T00:00:00.000Z",
@@ -129,13 +129,13 @@ describe("Fetcher", async () => {
 
   describe("fetchBackward", async () => {
     test("no data in cache", async () => {
-      store.load.mockResolvedValue([]);
+      io.load.mockResolvedValue([]);
       dataFetcher.fetchBackward.mockResolvedValue([2, 3, 4, 5, 6, 7].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchBackward(t(7));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchBackward).toHaveBeenCalledExactlyOnceWith(t(7));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6, 7].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -145,13 +145,13 @@ describe("Fetcher", async () => {
       ]);
     });
     test("missing range", async () => {
-      store.load.mockResolvedValue([[c(3)], [c(7)]]);
+      io.load.mockResolvedValue([[c(3)], [c(7)]]);
       dataFetcher.fetchBackward.mockResolvedValue([2, 3, 4, 5, 6].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchBackward(t(7));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchBackward).toHaveBeenCalledExactlyOnceWith(t(6));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([2, 3, 4, 5, 6].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -164,9 +164,9 @@ describe("Fetcher", async () => {
 
   describe("common", async () => {
     test("data fully in cache", async () => {
-      store.load.mockResolvedValue([[3, 4, 5, 6, 7].map(c)]);
+      io.load.mockResolvedValue([[3, 4, 5, 6, 7].map(c)]);
       const candlesticks = await fetcher.fetchAround(t(5));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -176,13 +176,13 @@ describe("Fetcher", async () => {
       ]);
     });
     test("missing head", async () => {
-      store.load.mockResolvedValue([[4, 5, 6, 7].map(c)]);
+      io.load.mockResolvedValue([[4, 5, 6, 7].map(c)]);
       dataFetcher.fetchBackward.mockResolvedValue([1, 2, 3].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchAround(t(5));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchBackward).toHaveBeenCalledExactlyOnceWith(t(3));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([1, 2, 3].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([1, 2, 3].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -192,13 +192,13 @@ describe("Fetcher", async () => {
       ]);
     });
     test("missing tail", async () => {
-      store.load.mockResolvedValue([[3, 4, 5, 6].map(c)]);
+      io.load.mockResolvedValue([[3, 4, 5, 6].map(c)]);
       dataFetcher.fetchForward.mockResolvedValue([7, 8, 9].map(c));
-      store.save.mockResolvedValue();
+      io.save.mockResolvedValue();
       const candlesticks = await fetcher.fetchAround(t(5));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(3), t(7));
       expect(dataFetcher.fetchForward).toHaveBeenCalledExactlyOnceWith(t(7));
-      expect(store.save).toHaveBeenCalledExactlyOnceWith([7, 8, 9].map(c));
+      expect(io.save).toHaveBeenCalledExactlyOnceWith([7, 8, 9].map(c));
       expect(candlesticks.map(dumpCandlestick)).toEqual([
         "1970-01-03T00:00:00.000Z",
         "1970-01-04T00:00:00.000Z",
@@ -211,12 +211,12 @@ describe("Fetcher", async () => {
 
   describe("errors", async () => {
     test("empty cache & empty data fetch", async () => {
-      store.load.mockResolvedValue([]);
+      io.load.mockResolvedValue([]);
       dataFetcher.fetchAround.mockResolvedValue([]);
       await expect(async () => {
         await fetcher.fetchAround(t(7));
       }).rejects.toThrow("empty data range");
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
       expect(dataFetcher.fetchAround).toHaveBeenCalledExactlyOnceWith(t(7));
     });
     const makeMessage = (p: { n: number; isNoHead: boolean; isNoTail: boolean }): string => {
@@ -225,32 +225,32 @@ describe("Fetcher", async () => {
       return `${pref} (${info})`;
     };
     test("cached block that's missing both head & tail", async () => {
-      store.load.mockResolvedValue([[c(6)]]);
+      io.load.mockResolvedValue([[c(6)]]);
       await expect(async () => {
         await fetcher.fetchAround(t(7));
       }).rejects.toThrow(makeMessage({ n: 1, isNoHead: true, isNoTail: true }));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
     });
     test("2 cached blocks missing head", async () => {
-      store.load.mockResolvedValue([[c(6)], [c(9)]]);
+      io.load.mockResolvedValue([[c(6)], [c(9)]]);
       await expect(async () => {
         await fetcher.fetchAround(t(7));
       }).rejects.toThrow(makeMessage({ n: 2, isNoHead: true, isNoTail: false }));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
     });
     test("2 cached blocks missing tail", async () => {
-      store.load.mockResolvedValue([[c(5)], [c(8)]]);
+      io.load.mockResolvedValue([[c(5)], [c(8)]]);
       await expect(async () => {
         await fetcher.fetchAround(t(7));
       }).rejects.toThrow(makeMessage({ n: 2, isNoHead: false, isNoTail: true }));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
     });
     test("more than 2 cached blocks", async () => {
-      store.load.mockResolvedValue([[c(5)], [c(7)], [c(9)]]);
+      io.load.mockResolvedValue([[c(5)], [c(7)], [c(9)]]);
       await expect(async () => {
         await fetcher.fetchAround(t(7));
       }).rejects.toThrow(makeMessage({ n: 3, isNoHead: false, isNoTail: false }));
-      expect(store.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
+      expect(io.load).toHaveBeenCalledExactlyOnceWith(t(5), t(9));
     });
   });
 });
