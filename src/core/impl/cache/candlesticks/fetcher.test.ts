@@ -3,8 +3,8 @@ import type { Interval } from "@/core/base/interval";
 import { addToEpochDate } from "@/core/base/interval";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { UTCDate } from "@date-fns/utc";
-import type { Store } from "@/core/impl/cache/candlesticks";
-import { Fetcher } from "@/core/impl/cache/candlesticks";
+import type { Store } from "@/core/impl/cache/candlesticks/fetcher";
+import { Fetcher } from "@/core/impl/cache/candlesticks/fetcher";
 
 describe("Fetcher", async () => {
   const fetchAround: Mock<IFetcher["fetchAround"]> = vi.fn(() => {
@@ -159,7 +159,7 @@ describe("Fetcher", async () => {
         "1970-01-06T00:00:00.000Z",
         "1970-01-07T00:00:00.000Z",
       ]);
-    })
+    });
   });
 
   describe("common", async () => {
