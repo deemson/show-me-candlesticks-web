@@ -4,6 +4,7 @@ import type { Interval } from "@/core/base/interval";
 import { addToEpochDate, addToDate } from "@/core/base/interval";
 import type { BlockMap, Store } from "@/core/impl/cache/candlesticks/block-io";
 import { BlockIO, FixedBlockSizeIndexer } from "@/core/impl/cache/candlesticks/block-io";
+import type { Indexer, Index } from "@/core/impl/cache/candlesticks/block-io";
 import type { UTCDate } from "@date-fns/utc";
 
 describe("BlockIO", async () => {
@@ -150,5 +151,46 @@ describe("BlockIO", async () => {
     expect(dumpCandlestickBlocks(blocks)).toEqual([
       ["1970-01-01T00:00:00.000Z", "1970-01-02T00:00:00.000Z", "1970-01-03T00:00:00.000Z"],
     ]);
+  });
+  test("save incomplete block 0 and complete 1, 2", async () => {
+    await io.save([2, 3, 4, 5, 6, 7, 8, 9].map(c));
+    expect(dumpBlockMap(storeBlockMap)).toEqual([
+      [1, ["1970-01-04T00:00:00.000Z", "1970-01-05T00:00:00.000Z", "1970-01-06T00:00:00.000Z"]],
+      [2, ["1970-01-07T00:00:00.000Z", "1970-01-08T00:00:00.000Z", "1970-01-09T00:00:00.000Z"]],
+    ]);
+  });
+  test("save non-contiguous block 0", async () => {
+    await expect(async () => {
+      await io.save([1, 3].map(c));
+    }).rejects.toThrow(
+      [
+        "non-contiguous cache for block 0:",
+        "received index 2 after index 0",
+        "reported at 1970-01-03T00:00:00.000Z",
+      ].join(" "),
+    );
+  });
+  test("save indexing issue", async () => {
+    let isFirstCall = true;
+    const indexer: Indexer = {
+      index: (_: number): Index => {
+        if (isFirstCall) {
+          isFirstCall = false;
+          return { blockSize: 3, blockIndex: 0, blockNumber: 0 };
+        } else {
+          return { blockSize: 4, blockIndex: 0, blockNumber: 0 };
+        }
+      },
+    };
+    const io = new BlockIO(indexer, store);
+    await expect(async () => {
+      await io.save([1, 2].map(c));
+    }).rejects.toThrow(
+      [
+        "inconsistent indexed block size for block 0:",
+        "registered block size 3 is not equal to block size 4",
+        "reported at 1970-01-02T00:00:00.000Z",
+      ].join(" "),
+    );
   });
 });

@@ -2,6 +2,7 @@ import type { Candlestick } from "@/core/base/candlesticks";
 import type { IO } from "@/core/impl/cache/candlesticks/fetcher";
 import type { Interval } from "@/core/base/interval";
 import { numberSinceEpochTimestamp } from "@/core/base/interval";
+import { UTCDate } from "@date-fns/utc";
 
 export class BlockIO implements IO {
   constructor(
@@ -10,8 +11,8 @@ export class BlockIO implements IO {
   ) {}
 
   async load(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]> {
-    const fromBlockNumber = this.indexer.timestampToBlockNumber(fromTimestamp);
-    const toBlockNumber = this.indexer.timestampToBlockNumber(toTimestamp);
+    const fromBlockNumber = this.indexer.index(fromTimestamp).blockNumber;
+    const toBlockNumber = this.indexer.index(toTimestamp).blockNumber;
     const blockMap = await this.store.load(fromBlockNumber, toBlockNumber);
     const blocks: Candlestick[][] = [];
     if (blockMap.has(fromBlockNumber)) {
@@ -55,13 +56,43 @@ export class BlockIO implements IO {
   }
 
   async save(candlesticks: Candlestick[]): Promise<void> {
-    const blockMap = new Map<number, Candlestick[]>();
+    const blockDefs = new Map<number, { blockSize: number; candlesticks: Candlestick[] }>();
     for (const candlestick of candlesticks) {
-      const blockNumber = this.indexer.timestampToBlockNumber(candlestick.timestamp);
-      if (!blockMap.has(blockNumber)) {
-        blockMap.set(blockNumber, []);
+      const { blockNumber, blockIndex, blockSize } = this.indexer.index(candlestick.timestamp);
+      if (!blockDefs.has(blockNumber)) {
+        if (blockIndex !== 0) {
+          continue;
+        }
+        blockDefs.set(blockNumber, { blockSize, candlesticks: [candlestick] });
+      } else {
+        if (blockSize !== blockDefs.get(blockNumber)?.blockSize) {
+          throw new Error(
+            [
+              `inconsistent indexed block size for block ${blockNumber}:`,
+              `registered block size ${blockDefs.get(blockNumber)?.blockSize}`,
+              `is not equal to block size ${blockSize}`,
+              `reported at ${new UTCDate(candlestick.timestamp).toISOString()}`,
+            ].join(" "),
+          );
+        }
+        if (blockIndex !== blockDefs.get(blockNumber)?.candlesticks.length) {
+          throw new Error(
+            [
+              `non-contiguous cache for block ${blockNumber}:`,
+              `received index ${blockIndex}`,
+              `after index ${(blockDefs.get(blockNumber)?.candlesticks.length as number) - 1}`,
+              `reported at ${new UTCDate(candlestick.timestamp).toISOString()}`,
+            ].join(" "),
+          );
+        }
+        blockDefs.get(blockNumber)?.candlesticks.push(candlestick);
       }
-      blockMap.get(blockNumber)?.push(candlestick);
+    }
+    const blockMap = new Map<number, Candlestick[]>();
+    for (const [blockNumber, { blockSize, candlesticks }] of blockDefs.entries()) {
+      if (candlesticks.length === blockSize) {
+        blockMap.set(blockNumber, candlesticks);
+      }
     }
     await this.store.save(blockMap);
   }
@@ -74,8 +105,14 @@ export interface Store {
   save(blockMap: BlockMap): Promise<void>;
 }
 
+export interface Index {
+  blockNumber: number;
+  blockIndex: number;
+  blockSize: number;
+}
+
 export interface Indexer {
-  timestampToBlockNumber(timestamp: number): number;
+  index(timestamp: number): Index;
 }
 
 export class FixedBlockSizeIndexer implements Indexer {
@@ -88,8 +125,12 @@ export class FixedBlockSizeIndexer implements Indexer {
     this.blockSize = Math.floor(blockSize);
   }
 
-  timestampToBlockNumber(timestamp: number): number {
+  index(timestamp: number): Index {
     const n = numberSinceEpochTimestamp(this.interval, timestamp);
-    return Math.floor(n / this.blockSize);
+    return {
+      blockNumber: Math.floor(n / this.blockSize),
+      blockIndex: n % this.blockSize,
+      blockSize: this.blockSize,
+    };
   }
 }
