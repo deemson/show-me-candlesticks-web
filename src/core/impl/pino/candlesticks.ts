@@ -1,11 +1,7 @@
 import { logger } from "@/core/impl/pino/logger";
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { IO as ICacheIO } from "@/core/impl/cache/candlesticks/fetcher";
-import type {
-  Indexer as IBlockCacheIndexer,
-  Store as IBlockCacheStore,
-  BlockMap,
-} from "@/core/impl/cache/candlesticks/block-io";
+import type { Store as IBlockCacheStore, BlockMap } from "@/core/impl/cache/candlesticks/block-io";
 import { UTCDate } from "@date-fns/utc";
 
 const t2s = (timestamp: number): string => {
