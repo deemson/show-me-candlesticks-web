@@ -12,10 +12,9 @@ export class Fetcher implements IFetcher {
   private readonly backwardLimit: number;
 
   constructor(
-    private readonly interval: Interval,
-    limit: number,
-    private readonly io: IO,
     private readonly dataFetcher: IFetcher,
+    private readonly io: IO,
+    limit: number,
   ) {
     this.aroundForwardLimit = Math.round((limit - 1) / 2);
     this.aroundBackwardLimit = Math.floor((limit - 1) / 2);
@@ -23,40 +22,46 @@ export class Fetcher implements IFetcher {
     this.backwardLimit = Math.floor(limit - 1);
   }
 
-  async fetchAround(timestamp: number): Promise<Candlestick[]> {
+  async fetchAround(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
     const date = new UTCDate(timestamp);
-    const fromDate = subtractFromDate(this.interval, date, this.aroundBackwardLimit);
-    const toDate = addToDate(this.interval, date, this.aroundForwardLimit);
-    return this.fetchDateRange("around", fromDate, toDate);
+    const fromDate = subtractFromDate(interval, date, this.aroundBackwardLimit);
+    const toDate = addToDate(interval, date, this.aroundForwardLimit);
+    return this.fetchDateRange("around", symbol, interval, fromDate, toDate);
   }
 
-  async fetchForward(timestamp: number): Promise<Candlestick[]> {
+  async fetchForward(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
     const fromDate = new UTCDate(timestamp);
-    const toDate = addToDate(this.interval, fromDate, this.forwardLimit);
-    return this.fetchDateRange("forward", fromDate, toDate);
+    const toDate = addToDate(interval, fromDate, this.forwardLimit);
+    return this.fetchDateRange("forward", symbol, interval, fromDate, toDate);
   }
 
-  async fetchBackward(timestamp: number): Promise<Candlestick[]> {
+  async fetchBackward(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
     const toDate = new UTCDate(timestamp);
-    const fromDate = subtractFromDate(this.interval, toDate, this.backwardLimit);
-    return this.fetchDateRange("backward", fromDate, toDate);
+    const fromDate = subtractFromDate(interval, toDate, this.backwardLimit);
+    return this.fetchDateRange("backward", symbol, interval, fromDate, toDate);
   }
 
-  private async fetchDateRange(fetchType: FetchType, fromDate: UTCDate, toDate: UTCDate): Promise<Candlestick[]> {
+  private async fetchDateRange(
+    fetchType: FetchType,
+    symbol: string,
+    interval: Interval,
+    fromDate: UTCDate,
+    toDate: UTCDate,
+  ): Promise<Candlestick[]> {
     const fromTimestamp = fromDate.getTime();
     const toTimestamp = toDate.getTime();
-    const candlestickBlocks = await this.io.load(fromTimestamp, toTimestamp);
+    const candlestickBlocks = await this.io.load(symbol, interval, fromTimestamp, toTimestamp);
     if (!candlestickBlocks || candlestickBlocks.length === 0) {
       let candlesticksRange: Candlestick[] = [];
       switch (fetchType) {
         case "around":
-          candlesticksRange = await this.dataFetchAround(fromTimestamp, toTimestamp);
+          candlesticksRange = await this.dataFetchAround(symbol, interval, fromTimestamp, toTimestamp);
           break;
         case "forward":
-          candlesticksRange = await this.dataFetchForward(fromTimestamp, toTimestamp);
+          candlesticksRange = await this.dataFetchForward(symbol, interval, fromTimestamp, toTimestamp);
           break;
         case "backward":
-          candlesticksRange = await this.dataFetchBackward(fromTimestamp, toTimestamp);
+          candlesticksRange = await this.dataFetchBackward(symbol, interval, fromTimestamp, toTimestamp);
           break;
       }
       if (!candlesticksRange || candlesticksRange.length === 0) {
@@ -92,52 +97,77 @@ export class Fetcher implements IFetcher {
       return candlestickBlocks[0];
     }
     if (isMissingHead) {
-      const missingHeadTimestamp = subtractFromTimestamp(this.interval, firstCandlestick.timestamp, 1);
-      const missingHead = await this.dataFetchBackward(fromTimestamp, missingHeadTimestamp);
+      const missingHeadTimestamp = subtractFromTimestamp(interval, firstCandlestick.timestamp, 1);
+      const missingHead = await this.dataFetchBackward(symbol, interval, fromTimestamp, missingHeadTimestamp);
       return [...missingHead, ...candlestickBlocks[0]];
     }
     if (isMissingTail) {
-      const missingTailTimestamp = addToTimestamp(this.interval, lastCandlestick.timestamp, 1);
-      const missingTail = await this.dataFetchForward(missingTailTimestamp, toTimestamp);
+      const missingTailTimestamp = addToTimestamp(interval, lastCandlestick.timestamp, 1);
+      const missingTail = await this.dataFetchForward(symbol, interval, missingTailTimestamp, toTimestamp);
       return [...candlestickBlocks[0], ...missingTail];
     }
     const firstBlockLastTimestamp = (firstCandlestickBlock.at(-1) as Candlestick).timestamp;
     const lastBlockFirstTimestamp = lastCandlestickBlock[0].timestamp;
-    const missingRangeFromTimestamp = addToTimestamp(this.interval, firstBlockLastTimestamp, 1);
-    const missingRangeToTimestamp = subtractFromTimestamp(this.interval, lastBlockFirstTimestamp, 1);
+    const missingRangeFromTimestamp = addToTimestamp(interval, firstBlockLastTimestamp, 1);
+    const missingRangeToTimestamp = subtractFromTimestamp(interval, lastBlockFirstTimestamp, 1);
     let missingRange: Candlestick[] = [];
     switch (fetchType) {
       case "around":
-        missingRange = await this.dataFetchAround(missingRangeFromTimestamp, missingRangeToTimestamp);
+        missingRange = await this.dataFetchAround(symbol, interval, missingRangeFromTimestamp, missingRangeToTimestamp);
         break;
       case "forward":
-        missingRange = await this.dataFetchForward(missingRangeFromTimestamp, missingRangeToTimestamp);
+        missingRange = await this.dataFetchForward(
+          symbol,
+          interval,
+          missingRangeFromTimestamp,
+          missingRangeToTimestamp,
+        );
         break;
       case "backward":
-        missingRange = await this.dataFetchBackward(missingRangeFromTimestamp, missingRangeToTimestamp);
+        missingRange = await this.dataFetchBackward(
+          symbol,
+          interval,
+          missingRangeFromTimestamp,
+          missingRangeToTimestamp,
+        );
         break;
     }
     return [...candlestickBlocks[0], ...missingRange, ...candlestickBlocks[1]];
   }
 
-  private async dataFetchAround(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[]> {
+  private async dataFetchAround(
+    symbol: string,
+    interval: Interval,
+    fromTimestamp: number,
+    toTimestamp: number,
+  ): Promise<Candlestick[]> {
     const middleDate = new UTCDate((fromTimestamp + toTimestamp) / 2);
-    const candlesticks = await this.dataFetcher.fetchAround(middleDate.getTime());
+    const candlesticks = await this.dataFetcher.fetchAround(symbol, interval, middleDate.getTime());
     if (candlesticks && candlesticks.length > 0) {
-      await this.io.save(candlesticks);
+      await this.io.save(symbol, interval, candlesticks);
     }
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 
-  private async dataFetchForward(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[]> {
-    const candlesticks = await this.dataFetcher.fetchForward(fromTimestamp);
-    await this.io.save(candlesticks);
+  private async dataFetchForward(
+    symbol: string,
+    interval: Interval,
+    fromTimestamp: number,
+    toTimestamp: number,
+  ): Promise<Candlestick[]> {
+    const candlesticks = await this.dataFetcher.fetchForward(symbol, interval, fromTimestamp);
+    await this.io.save(symbol, interval, candlesticks);
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 
-  private async dataFetchBackward(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[]> {
-    const candlesticks = await this.dataFetcher.fetchBackward(toTimestamp);
-    await this.io.save(candlesticks);
+  private async dataFetchBackward(
+    symbol: string,
+    interval: Interval,
+    fromTimestamp: number,
+    toTimestamp: number,
+  ): Promise<Candlestick[]> {
+    const candlesticks = await this.dataFetcher.fetchBackward(symbol, interval, toTimestamp);
+    await this.io.save(symbol, interval, candlesticks);
     return sliceCandlesticksToDateRange(candlesticks, fromTimestamp, toTimestamp);
   }
 }
@@ -174,6 +204,6 @@ const sliceCandlesticksToDateRange = (
 };
 
 export interface IO {
-  load(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]>;
-  save(candlesticks: Candlestick[]): Promise<void>;
+  load(symbol: string, interval: Interval, fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]>;
+  save(symbol: string, interval: Interval, candlesticks: Candlestick[]): Promise<void>;
 }

@@ -10,10 +10,10 @@ export class BlockIO implements IO {
     private readonly store: Store,
   ) {}
 
-  async load(fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]> {
-    const fromBlockNumber = this.indexer.index(fromTimestamp).blockNumber;
-    const toBlockNumber = this.indexer.index(toTimestamp).blockNumber;
-    const blockMap = await this.store.load(fromBlockNumber, toBlockNumber);
+  async load(symbol: string, interval: Interval, fromTimestamp: number, toTimestamp: number): Promise<Candlestick[][]> {
+    const fromBlockNumber = this.indexer.index(interval, fromTimestamp).blockNumber;
+    const toBlockNumber = this.indexer.index(interval, toTimestamp).blockNumber;
+    const blockMap = await this.store.load(symbol, interval, fromBlockNumber, toBlockNumber);
     const blocks: Candlestick[][] = [];
     if (blockMap.has(fromBlockNumber)) {
       const firstBlock = blockMap.get(fromBlockNumber) as Candlestick[];
@@ -55,10 +55,10 @@ export class BlockIO implements IO {
     return blocks;
   }
 
-  async save(candlesticks: Candlestick[]): Promise<void> {
+  async save(symbol: string, interval: Interval, candlesticks: Candlestick[]): Promise<void> {
     const blockDefs = new Map<number, { blockSize: number; candlesticks: Candlestick[] }>();
     for (const candlestick of candlesticks) {
-      const { blockNumber, blockIndex, blockSize } = this.indexer.index(candlestick.timestamp);
+      const { blockNumber, blockIndex, blockSize } = this.indexer.index(interval, candlestick.timestamp);
       if (!blockDefs.has(blockNumber)) {
         if (blockIndex !== 0) {
           continue;
@@ -94,15 +94,15 @@ export class BlockIO implements IO {
         blockMap.set(blockNumber, candlesticks);
       }
     }
-    await this.store.save(blockMap);
+    await this.store.save(symbol, interval, blockMap);
   }
 }
 
 export type BlockMap = Map<number, Candlestick[]>;
 
 export interface Store {
-  load(fromBlockNumber: number, toBlockNumber: number): Promise<BlockMap>;
-  save(blockMap: BlockMap): Promise<void>;
+  load(symbol: string, interval: Interval, fromBlockNumber: number, toBlockNumber: number): Promise<BlockMap>;
+  save(symbol: string, interval: Interval, blockMap: BlockMap): Promise<void>;
 }
 
 export interface Index {
@@ -112,21 +112,18 @@ export interface Index {
 }
 
 export interface Indexer {
-  index(timestamp: number): Index;
+  index(interval: Interval, timestamp: number): Index;
 }
 
 export class FixedBlockSizeIndexer implements Indexer {
   private readonly blockSize: number;
 
-  constructor(
-    private readonly interval: Interval,
-    blockSize: number,
-  ) {
+  constructor(blockSize: number) {
     this.blockSize = Math.floor(blockSize);
   }
 
-  index(timestamp: number): Index {
-    const n = numberSinceEpochTimestamp(this.interval, timestamp);
+  index(interval: Interval, timestamp: number): Index {
+    const n = numberSinceEpochTimestamp(interval, timestamp);
     return {
       blockNumber: Math.floor(n / this.blockSize),
       blockIndex: n % this.blockSize,
