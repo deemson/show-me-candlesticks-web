@@ -2,6 +2,8 @@ import { describe, test, expect } from "vitest";
 import { differenceInMonths, addHours, addMonths, addDays } from "date-fns";
 import type { Interval } from "@/core/base/interval";
 import {
+  toShortString,
+  fromShortString,
   addToTimestamp,
   subtractFromTimestamp,
   differenceBetweenTimestamps,
@@ -38,6 +40,29 @@ describe("date demonstrative tests", () => {
     expect(utcDate.toISOString()).toEqual("2025-03-29T00:00:00.000Z");
     expect(addDays(utcDate, 2).toISOString()).toEqual("2025-03-31T00:00:00.000Z");
   });
+});
+
+test("toShortString", () => {
+  expect(toShortString({ amount: 3, unit: "minutes" })).toEqual("3m");
+  expect(toShortString({ amount: 5, unit: "hours" })).toEqual("5h");
+  expect(toShortString({ amount: 3, unit: "months" })).toEqual("3M");
+});
+
+test("fromShortString", () => {
+  expect(fromShortString("15m")).toEqual({ unit: "minutes", amount: 15 });
+  expect(() => {
+    fromShortString("");
+  }).toThrow("empty string");
+  expect(() => {
+    fromShortString("!");
+  }).toThrow("'!' is an incorrect unit");
+  expect(() => {
+    fromShortString("!!m");
+  }).toThrow("'!!' is an incorrect amount");
+  expect(fromShortString("2.8m")).toEqual({ unit: "minutes", amount: 2 });
+  expect(() => {
+    fromShortString("-5m");
+  }).toThrow("expected amount to be a positive integer, got -5 instead");
 });
 
 test("addToTimestamp", () => {

@@ -4,10 +4,31 @@ import * as dateFns from "date-fns";
 export const allUnits = ["seconds", "minutes", "hours", "days", "weeks", "months"] as const;
 export type Unit = (typeof allUnits)[number];
 
-export interface Interval {
-  unit: Unit;
-  amount: number;
-}
+const unitShortStringMap: Map<Unit, string> = new Map([
+  ["seconds", "s"],
+  ["minutes", "m"],
+  ["hours", "h"],
+  ["days", "d"],
+  ["weeks", "w"],
+  ["months", "M"],
+]);
+const unitShortStringReversedMap: Map<string, Unit> = new Map(
+  unitShortStringMap.entries().map(([unit, str]) => {
+    return [str, unit];
+  }),
+);
+
+const unitToShortString = (unit: Unit): string => {
+  return unitShortStringMap.get(unit) as string;
+};
+
+const unitFromShortString = (str: string): Unit => {
+  const unit = unitShortStringReversedMap.get(str);
+  if (unit === undefined) {
+    throw new Error(`'${str}' is an incorrect unit`);
+  }
+  return unit;
+};
 
 interface UnitOperations {
   add: (date: UTCDate, amount: number) => UTCDate;
@@ -82,6 +103,33 @@ const unitOperationsMap: Record<Unit, UnitOperations> = {
       return dateFns.differenceInMonths(laterDate, earlierDate);
     },
   },
+};
+
+export interface Interval {
+  unit: Unit;
+  amount: number;
+}
+
+export const toShortString = (interval: Interval): string => {
+  const amount = interval.amount.toString();
+  const unit = unitToShortString(interval.unit);
+  return `${amount}${unit}`;
+};
+
+export const fromShortString = (str: string): Interval => {
+  if (str.length === 0) {
+    throw new Error("empty string");
+  }
+  const unit = unitFromShortString(str[str.length - 1]);
+  const amountStr = str.slice(0, -1);
+  const amount = Number.parseInt(amountStr, 10);
+  if (Number.isNaN(amount)) {
+    throw new Error(`'${amountStr}' is an incorrect amount`)
+  }
+  if (amount <= 0) {
+    throw new Error(`expected amount to be a positive integer, got ${amountStr} instead`)
+  }
+  return { unit, amount };
 };
 
 export const addToDate = (interval: Interval, date: UTCDate, amount: number): UTCDate => {
