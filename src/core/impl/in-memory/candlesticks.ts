@@ -1,48 +1,54 @@
-import type { Candlestick } from "@/core/base/candlesticks";
+import type { Interval } from "@/core/base/interval";
+import { toShortString } from "@/core/base/interval";
 import type { Store as IBlockCacheStore, BlockMap } from "@/core/impl/cache/candlesticks/block-io";
-import { UTCDate } from "@date-fns/utc";
 import { Mutex } from "async-mutex";
 
-export type BrowserConsoleCache = BrowserConsoleCacheItem[];
+export type BlockCache = Map<string, Map<string, BlockMap>>;
 
-export interface BrowserConsoleCacheItem {
-  range: string;
-  candlesticks: Candlestick[];
-}
-
-const cs2cis = (candlesticks: Candlestick[]): BrowserConsoleCacheItem => {
-  const from = new UTCDate(candlesticks[0].timestamp).toISOString();
-  const to = new UTCDate((candlesticks.at(-1) as Candlestick).timestamp).toISOString();
-  return {
-    range: `${from} - ${to}`,
-    candlesticks: candlesticks,
-  };
-};
-
-export class BrowserConsoleCacheStore implements IBlockCacheStore {
+export class BlockCacheStore implements IBlockCacheStore {
+  readonly blockCache: BlockCache;
   private readonly mutex: Mutex;
 
-  constructor(private readonly cache: BrowserConsoleCache) {
+  constructor() {
+    this.blockCache = new Map();
     this.mutex = new Mutex();
   }
 
-  async load(fromBlockNumber: number, toBlockNumber: number): Promise<BlockMap> {
+  async load(symbol: string, interval: Interval, fromBlockNumber: number, toBlockNumber: number): Promise<BlockMap> {
     return await this.mutex.runExclusive(async () => {
       const blockMap: BlockMap = new Map();
+      const cacheForSymbol = this.blockCache.get(symbol);
+      if (cacheForSymbol === undefined) {
+        return blockMap;
+      }
+      const cacheForSymbolAndInterval = cacheForSymbol.get(toShortString(interval));
+      if (cacheForSymbolAndInterval === undefined) {
+        return blockMap;
+      }
       for (let i = fromBlockNumber; i <= toBlockNumber; i++) {
-        const cacheItem = this.cache[i];
-        if (cacheItem !== undefined) {
-          blockMap.set(i, cacheItem.candlesticks);
+        const block = cacheForSymbolAndInterval.get(i);
+        if (block !== undefined) {
+          blockMap.set(i, block);
         }
       }
       return blockMap;
     });
   }
 
-  async save(blockMap: BlockMap): Promise<void> {
+  async save(symbol: string, interval: Interval, blockMap: BlockMap): Promise<void> {
     await this.mutex.runExclusive(async () => {
-      for (const [i, v] of blockMap.entries()) {
-        this.cache[i] = cs2cis(v);
+      let cacheForSymbol = this.blockCache.get(symbol);
+      if (cacheForSymbol === undefined) {
+        cacheForSymbol = new Map();
+        this.blockCache.set(symbol, cacheForSymbol);
+      }
+      let cacheForSymbolAndInterval = cacheForSymbol.get(toShortString(interval));
+      if (cacheForSymbolAndInterval === undefined) {
+        cacheForSymbolAndInterval = new Map();
+        cacheForSymbol.set(toShortString(interval), cacheForSymbolAndInterval);
+      }
+      for (const [i, block] of blockMap.entries()) {
+        cacheForSymbolAndInterval.set(i, block);
       }
     });
   }
