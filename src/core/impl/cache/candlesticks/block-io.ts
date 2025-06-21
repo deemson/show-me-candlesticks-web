@@ -18,8 +18,12 @@ export class BlockIO implements IO {
     if (blockMap.has(fromBlockNumber)) {
       const firstBlock = blockMap.get(fromBlockNumber) as Candlestick[];
       for (let i = 0; i < firstBlock.length; i++) {
-        if (firstBlock[i].timestamp >= fromTimestamp) {
+        if (firstBlock[i].timestamp === fromTimestamp) {
           blocks.push(firstBlock.slice(i));
+          break;
+        }
+        if (firstBlock[i].timestamp > fromTimestamp) {
+          blocks.push(firstBlock.slice(i > 0 ? i - 1 : 0));
           break;
         }
       }
@@ -39,12 +43,8 @@ export class BlockIO implements IO {
     if (blockMap.has(toBlockNumber)) {
       const lastBlock = blockMap.get(toBlockNumber) as Candlestick[];
       for (let i = 0; i < lastBlock.length; i++) {
-        if (lastBlock[i].timestamp === toTimestamp) {
+        if (lastBlock[i].timestamp >= toTimestamp) {
           blocks[blocks.length - 1] = [...blocks[blocks.length - 1], ...lastBlock.slice(0, i + 1)];
-          break;
-        }
-        if (lastBlock[i].timestamp > toTimestamp) {
-          blocks[blocks.length - 1] = [...blocks[blocks.length - 1], ...lastBlock.slice(0, i)];
           break;
         }
       }
