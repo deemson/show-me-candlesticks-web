@@ -1,6 +1,13 @@
 import type { Candlestick, Fetcher as IFetcher } from "@/core/base/candlesticks";
 import type { Interval } from "@/core/base/interval";
-import { addToDate, subtractFromDate, addToTimestamp, subtractFromTimestamp } from "@/core/base/interval";
+import {
+  addToDate,
+  subtractFromDate,
+  addToTimestamp,
+  subtractFromTimestamp,
+  numberSinceEpochTimestamp,
+  addToEpochTimestamp,
+} from "@/core/base/interval";
 import { UTCDate } from "@date-fns/utc";
 
 type FetchType = "around" | "forward" | "backward";
@@ -23,20 +30,32 @@ export class Fetcher implements IFetcher {
   }
 
   async fetchAround(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
-    const date = new UTCDate(timestamp);
+    const n = numberSinceEpochTimestamp(interval, timestamp);
+    let normalizedTimestamp = addToEpochTimestamp(interval, n);
+    if (normalizedTimestamp < timestamp) {
+      normalizedTimestamp = addToTimestamp(interval, normalizedTimestamp, 1);
+    }
+    const date = new UTCDate(normalizedTimestamp);
     const fromDate = subtractFromDate(interval, date, this.aroundBackwardLimit);
     const toDate = addToDate(interval, date, this.aroundForwardLimit);
     return this.fetchDateRange("around", symbol, interval, fromDate, toDate);
   }
 
   async fetchForward(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
-    const fromDate = new UTCDate(timestamp);
+    const n = numberSinceEpochTimestamp(interval, timestamp);
+    const normalizedTimestamp = addToEpochTimestamp(interval, n);
+    const fromDate = new UTCDate(normalizedTimestamp);
     const toDate = addToDate(interval, fromDate, this.forwardLimit);
     return this.fetchDateRange("forward", symbol, interval, fromDate, toDate);
   }
 
   async fetchBackward(symbol: string, interval: Interval, timestamp: number): Promise<Candlestick[]> {
-    const toDate = new UTCDate(timestamp);
+    const n = numberSinceEpochTimestamp(interval, timestamp);
+    let normalizedTimestamp = addToEpochTimestamp(interval, n);
+    if (normalizedTimestamp < timestamp) {
+      normalizedTimestamp = addToTimestamp(interval, normalizedTimestamp, 1);
+    }
+    const toDate = new UTCDate(normalizedTimestamp);
     const fromDate = subtractFromDate(interval, toDate, this.backwardLimit);
     return this.fetchDateRange("backward", symbol, interval, fromDate, toDate);
   }

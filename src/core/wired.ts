@@ -1,22 +1,22 @@
-import { Fetcher as SyntheticCandlesticksFetcher } from "@/core/impl/synthetic/candlesticks";
+import * as ccxt from "ccxt";
+import { Fetcher as CcxtCandlesticksFetcher } from "@/core/impl/ccxt/candlesticks";
 import { Fetcher as CachingCandlesticksFetcher } from "@/core/impl/cache/candlesticks/fetcher";
 import { BlockIO as BlockCacheIO, FixedBlockSizeIndexer } from "@/core/impl/cache/candlesticks/block-io";
-import { BlockCacheStore as InMemoryBlockCacheStore } from "@/core/impl/in-memory/candlesticks";
-import type { BlockCache as InMemoryBlockCache } from "@/core/impl/in-memory/candlesticks";
+import { BlockCacheStoreProvider as IDBBlockCacheStoreProvider } from "@/core/impl/idb/candlesticks";
 import {
   Fetcher as LoggingFetcher,
-  BlockCacheStore as LoggingBlockCacheStore,
   CacheIO as LoggingCacheIO,
-} from "@/core/impl/pino/candlesticks";
+  BlockCacheStore as LoggingBlockCacheStore,
+} from "@/core/impl/logging/candlesticks";
 
-const localWindow = window as unknown as { candlestickCache: InMemoryBlockCache };
+const ccxtBinanceExchange = new ccxt.binance();
+const idbBlockCacheStoreProvider = await IDBBlockCacheStoreProvider.initialize("ShowMeCandlesticksDB");
 
-const dataFetcher = new SyntheticCandlesticksFetcher(1000);
-const loggingDataFetcher = new LoggingFetcher("SyntheticFetcher", dataFetcher);
+const dataFetcher = new CcxtCandlesticksFetcher(ccxtBinanceExchange, 1000);
+const loggingDataFetcher = new LoggingFetcher("CcxtBinance", dataFetcher);
 
 const cacheIndexer = new FixedBlockSizeIndexer(100);
-const cacheStore = new InMemoryBlockCacheStore();
-localWindow.candlestickCache = cacheStore.blockCache;
+const cacheStore = idbBlockCacheStoreProvider.get("binance");
 const loggingCacheStore = new LoggingBlockCacheStore("CacheStore", cacheStore);
 const cacheIO = new BlockCacheIO(cacheIndexer, loggingCacheStore);
 const loggingCacheIO = new LoggingCacheIO("CacheIO", cacheIO);

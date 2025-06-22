@@ -8,16 +8,13 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candlestick } from "@/core/base/candlesticks";
-import { Fetcher as SyntheticCandlestickFetcher } from "@/core/impl/synthetic/candlesticks";
-import { Fetcher as LoggingFetcher } from "@/core/impl/pino/candlesticks";
+import { fetcher } from "@/core/wired";
 
 const candlestickToData = (candlestick: Candlestick): CandlestickData => {
   const time = (candlestick.timestamp / 1000) as UTCTimestamp;
   const { open, high, low, close } = candlestick;
   return { time, open, high, low, close };
 };
-
-const dataFetcher = new LoggingFetcher("synthetic", new SyntheticCandlestickFetcher(101, { amount: 1, unit: "days" }));
 
 export const Chart = () => {
   const containerRef: RefObject<HTMLDivElement | null> = useRef(null);
@@ -32,7 +29,11 @@ export const Chart = () => {
     series = chart.addSeries(CandlestickSeries);
 
     (async () => {
-      const candlesticks = await dataFetcher.fetchBackward(new Date().getTime());
+      const candlesticks = await fetcher.fetchAround(
+        "BTC/USDC",
+        { unit: "days", amount: 1 },
+        new Date(2024, 0, 1).getTime(),
+      );
       series.setData(candlesticks.map(candlestickToData));
     })();
   }, []);
